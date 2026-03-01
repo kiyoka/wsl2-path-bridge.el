@@ -161,6 +161,28 @@ GROUPはmatch-stringのグループ番号（デフォルト0）。"
      ;; UNCパス \\server\...
      (wsl2-path-bridge--match-path-at-col "\\\\\\\\[^ \t\n\"]*" line col))))
 
+;;; WSL2パス → Windowsパス変換（wslpathコマンド使用）
+
+(defun wsl2-path-bridge-to-windows-path (path)
+  "WSL2のPATHをWindowsパスに変換する。wslpathコマンドを使用。"
+  (let ((result (string-trim
+                 (shell-command-to-string
+                  (format "wslpath -w %s" (shell-quote-argument path))))))
+    (if (string-empty-p result) nil result)))
+
+;;;###autoload
+(defun wsl2-path-bridge-copy-windows-path ()
+  "現在のバッファのファイルパスをWindowsパスに変換してクリップボードにコピーする。"
+  (interactive)
+  (let ((file (buffer-file-name)))
+    (unless file
+      (error "このバッファにはファイルが関連付けられていません"))
+    (let ((win-path (wsl2-path-bridge-to-windows-path file)))
+      (unless win-path
+        (error "パスの変換に失敗しました: %s" file))
+      (kill-new win-path)
+      (message "Copied: %s" win-path))))
+
 ;;;###autoload
 (define-minor-mode wsl2-path-bridge-mode
   "WindowsパスをWSL2パスに自動変換するグローバルマイナーモード。

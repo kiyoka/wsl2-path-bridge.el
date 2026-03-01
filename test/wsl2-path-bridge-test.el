@@ -264,6 +264,25 @@
                    "/mnt/c/Users/user/OneDrive/デスクトップ/test.txt"))))
 
 ;;; ============================================================
+;;; wsl2-path-bridge-to-windows-path のテスト
+;;; ============================================================
+
+(ert-deftest test-to-windows-path ()
+  "WSL2パスをWindowsパスに変換する。"
+  (let ((result (wsl2-path-bridge-to-windows-path "/mnt/c/Users")))
+    (should (equal result "C:\\Users"))))
+
+(ert-deftest test-to-windows-path-japanese ()
+  "日本語を含むWSL2パスをWindowsパスに変換する。"
+  (let ((result (wsl2-path-bridge-to-windows-path "/mnt/c/Users/user/OneDrive/デスクトップ")))
+    (should (equal result "C:\\Users\\user\\OneDrive\\デスクトップ"))))
+
+(ert-deftest test-copy-windows-path-no-file ()
+  "ファイルが関連付けられていないバッファでエラーになる。"
+  (with-temp-buffer
+    (should-error (wsl2-path-bridge-copy-windows-path))))
+
+;;; ============================================================
 ;;; モード有効/無効のテスト
 ;;; ============================================================
 
