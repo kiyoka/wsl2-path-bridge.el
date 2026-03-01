@@ -197,11 +197,14 @@ WSL2パスに変換して開けるようになります。"
       (progn
         (advice-add 'yank :after #'wsl2-path-bridge--after-yank)
         (advice-add 'yank-pop :after #'wsl2-path-bridge--after-yank)
+        ;; ターミナルペースト対応（emacs -nw でのドラッグ&ドロップ等）
+        (advice-add 'xterm-paste :after #'wsl2-path-bridge--after-yank)
         ;; ffapがオートロード前にアドバイスが失われないよう事前にロード
         (require 'ffap)
         (advice-add 'ffap-guesser :before-until #'wsl2-path-bridge--ffap-at-point))
     (advice-remove 'yank #'wsl2-path-bridge--after-yank)
     (advice-remove 'yank-pop #'wsl2-path-bridge--after-yank)
+    (advice-remove 'xterm-paste #'wsl2-path-bridge--after-yank)
     (advice-remove 'ffap-guesser #'wsl2-path-bridge--ffap-at-point)))
 
 (provide 'wsl2-path-bridge)

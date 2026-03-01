@@ -291,10 +291,12 @@
   (wsl2-path-bridge-mode 1)
   (should (advice-member-p #'wsl2-path-bridge--after-yank 'yank))
   (should (advice-member-p #'wsl2-path-bridge--after-yank 'yank-pop))
+  (should (advice-member-p #'wsl2-path-bridge--after-yank 'xterm-paste))
   (should (advice-member-p #'wsl2-path-bridge--ffap-at-point 'ffap-guesser))
   (wsl2-path-bridge-mode -1)
   (should-not (advice-member-p #'wsl2-path-bridge--after-yank 'yank))
   (should-not (advice-member-p #'wsl2-path-bridge--after-yank 'yank-pop))
+  (should-not (advice-member-p #'wsl2-path-bridge--after-yank 'xterm-paste))
   (should-not (advice-member-p #'wsl2-path-bridge--ffap-at-point 'ffap-guesser)))
 
 (provide 'wsl2-path-bridge-test)
