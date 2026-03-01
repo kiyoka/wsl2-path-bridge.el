@@ -62,7 +62,7 @@ sudo service ssh start
 
 ### Windowsパスのコピー
 
-`M-x wsl2-path-bridge-copy-windows-path` で、現在のバッファのWSL2パスをWindowsパスに変換してクリップボードにコピーします。Windows側のアプリケーションにパスを渡したい場合に便利です。
+`C-c p`（または `M-x wsl2-path-bridge-copy-windows-path`）で、現在のバッファのWSL2パスをWindowsパスに変換してkill-ringとWindowsクリップボード（clip.exe）にコピーします。Windows側のアプリケーションにパスを渡したい場合に便利です。
 
 ### 変換例
 
