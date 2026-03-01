@@ -24,10 +24,45 @@ WSL2上のEmacsで、Windowsのファイルパス（`C:\Users\...`）を `find-f
 
 ## 使い方
 
+### GUI Emacs（X-Windows）でのコピー&ペースト
+
 1. Windows側でファイルパスをコピーします（エクスプローラーのアドレスバー等）
 2. Emacsで `C-x C-f`（find-file）を実行します
 3. ミニバッファで `C-y`（yank）でペーストします
 4. Windowsパスが自動的にWSL2パスに変換されます
+
+### ターミナル Emacs（emacs -nw）でのドラッグ&ドロップ
+
+Tera Term等のターミナルエミュレーターを使うと、ファイルのドラッグ&ドロップでもパス変換が動作します。
+
+#### Tera Termでの手順
+
+1. WSL2のUbuntuにSSHサーバーをセットアップします
+
+```bash
+sudo apt install openssh-server
+sudo service ssh start
+```
+
+2. Tera Termから `localhost` にSSH接続します
+3. `emacs -nw` を起動します
+4. `C-x C-f`（find-file）を実行します
+5. エクスプローラーからファイルをTera Termのウィンドウにドラッグ&ドロップします
+6. ペーストされたWindowsパスが自動的にWSL2パスに変換されます
+
+ターミナルペースト（`xterm-paste`）にも対応しているため、ドラッグ&ドロップだけでなく、ターミナルの右クリック貼り付けでも変換されます。
+
+### ffap（find-file-at-point）
+
+バッファ中のWindowsパス上にカーソルを置いて `M-x ffap` を実行すると、WSL2パスに変換してファイルを開きます。
+
+```
+"C:\Users\user\file.txt"   ← この上で M-x ffap
+```
+
+### Windowsパスのコピー
+
+`M-x wsl2-path-bridge-copy-windows-path` で、現在のバッファのWSL2パスをWindowsパスに変換してクリップボードにコピーします。Windows側のアプリケーションにパスを渡したい場合に便利です。
 
 ### 変換例
 
