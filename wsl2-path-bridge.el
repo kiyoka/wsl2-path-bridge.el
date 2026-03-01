@@ -188,7 +188,11 @@ clip.exeが利用できない場合はnilを返す。"
   "現在のバッファのファイルパスをWindowsパスに変換してクリップボードにコピーする。
 kill-ringとWindowsクリップボード（clip.exe）の両方にコピーする。"
   (interactive)
-  (let ((file (buffer-file-name)))
+  (let ((file (or (buffer-file-name)
+                  (and (derived-mode-p 'dired-mode)
+                       (dired-get-filename nil t))
+                  (and (derived-mode-p 'dired-mode)
+                       (expand-file-name default-directory)))))
     (unless file
       (error "このバッファにはファイルが関連付けられていません"))
     (let ((win-path (wsl2-path-bridge-to-windows-path file)))
