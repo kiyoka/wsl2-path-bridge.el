@@ -130,20 +130,79 @@ PATHがWindowsパスでもUNCパスでもない場合はnilを返す。"
 ファイル名入力中のミニバッファでのみパス変換を実行する。"
   (wsl2-path-bridge--convert-minibuffer-path))
 
+;;; ffap (find-file-at-point) 対応
+
+(defun wsl2-path-bridge--match-path-at-col (regex line col &optional group)
+  "LINE中のREGEXにマッチするパスのうち、COLを含むものを変換して返す。
+GROUPはmatch-stringのグループ番号（デフォルト0）。"
+  (let ((start 0)
+        (group (or group 0)))
+    (catch 'found
+      (while (string-match regex line start)
+        (when (and (<= (match-beginning 0) col)
+                   (< col (match-end 0)))
+          (let* ((path (match-string group line))
+                 (converted (wsl2-path-bridge--convert-path path)))
+            (when converted
+              (throw 'found converted))))
+        (setq start (match-end 0)))
+      nil)))
+
+(defun wsl2-path-bridge--ffap-at-point ()
+  "ポイント位置のWindowsパスを検出してWSL2パスを返す。ffapアドバイス用。"
+  (let ((line (buffer-substring-no-properties
+               (line-beginning-position) (line-end-position)))
+        (col (- (point) (line-beginning-position))))
+    (or
+     ;; クオート付きパス "..."
+     (wsl2-path-bridge--match-path-at-col "\"\\([^\"]+\\)\"" line col 1)
+     ;; ドライブレターパス C:\...
+     (wsl2-path-bridge--match-path-at-col "[A-Za-z]:[/\\\\][^ \t\n\"]*" line col)
+     ;; UNCパス \\server\...
+     (wsl2-path-bridge--match-path-at-col "\\\\\\\\[^ \t\n\"]*" line col))))
+
+;;; WSL2パス → Windowsパス変換（wslpathコマンド使用）
+
+(defun wsl2-path-bridge-to-windows-path (path)
+  "WSL2のPATHをWindowsパスに変換する。wslpathコマンドを使用。"
+  (let ((result (string-trim
+                 (shell-command-to-string
+                  (format "wslpath -w %s" (shell-quote-argument path))))))
+    (if (string-empty-p result) nil result)))
+
+;;;###autoload
+(defun wsl2-path-bridge-copy-windows-path ()
+  "現在のバッファのファイルパスをWindowsパスに変換してクリップボードにコピーする。"
+  (interactive)
+  (let ((file (buffer-file-name)))
+    (unless file
+      (error "このバッファにはファイルが関連付けられていません"))
+    (let ((win-path (wsl2-path-bridge-to-windows-path file)))
+      (unless win-path
+        (error "パスの変換に失敗しました: %s" file))
+      (kill-new win-path)
+      (message "Copied: %s" win-path))))
+
 ;;;###autoload
 (define-minor-mode wsl2-path-bridge-mode
   "WindowsパスをWSL2パスに自動変換するグローバルマイナーモード。
 有効にすると、ファイル名入力中のミニバッファでyankした際に
-Windowsパスが自動的にWSL2パスに変換されます。"
+Windowsパスが自動的にWSL2パスに変換されます。
+また、ffap (find-file-at-point) でバッファ中のWindowsパスを
+WSL2パスに変換して開けるようになります。"
   :global t
   :lighter " WSL2"
   :group 'wsl2-path-bridge
   (if wsl2-path-bridge-mode
       (progn
         (advice-add 'yank :after #'wsl2-path-bridge--after-yank)
-        (advice-add 'yank-pop :after #'wsl2-path-bridge--after-yank))
+        (advice-add 'yank-pop :after #'wsl2-path-bridge--after-yank)
+        ;; ffapがオートロード前にアドバイスが失われないよう事前にロード
+        (require 'ffap)
+        (advice-add 'ffap-guesser :before-until #'wsl2-path-bridge--ffap-at-point))
     (advice-remove 'yank #'wsl2-path-bridge--after-yank)
-    (advice-remove 'yank-pop #'wsl2-path-bridge--after-yank)))
+    (advice-remove 'yank-pop #'wsl2-path-bridge--after-yank)
+    (advice-remove 'ffap-guesser #'wsl2-path-bridge--ffap-at-point)))
 
 (provide 'wsl2-path-bridge)
 ;;; wsl2-path-bridge.el ends here
