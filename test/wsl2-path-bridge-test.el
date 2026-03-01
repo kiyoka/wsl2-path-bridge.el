@@ -221,6 +221,49 @@
     (should (equal wsl-path "/mnt/c/Users/user/OneDrive/デスクトップ/test.txt"))))
 
 ;;; ============================================================
+;;; wsl2-path-bridge--ffap-at-point のテスト
+;;; ============================================================
+
+(ert-deftest test-ffap-quoted-windows-path ()
+  "クオート付きWindowsパス上でffapが動作する。"
+  (with-temp-buffer
+    (insert "ファイルは \"C:\\Users\\user\\file.txt\" にあります。")
+    (goto-char 13)  ;; クオート内のパス上にカーソル
+    (should (equal (wsl2-path-bridge--ffap-at-point)
+                   "/mnt/c/Users/user/file.txt"))))
+
+(ert-deftest test-ffap-unquoted-windows-path ()
+  "クオートなしWindowsパス上でffapが動作する。"
+  (with-temp-buffer
+    (insert "path: C:\\Users\\user\\file.txt end")
+    (goto-char 8)  ;; パス上にカーソル
+    (should (equal (wsl2-path-bridge--ffap-at-point)
+                   "/mnt/c/Users/user/file.txt"))))
+
+(ert-deftest test-ffap-unc-path ()
+  "UNCパス上でffapが動作する。"
+  (with-temp-buffer
+    (insert "server: \\\\nas01\\share\\file.txt")
+    (goto-char 12)  ;; パス上にカーソル
+    (should (equal (wsl2-path-bridge--ffap-at-point)
+                   "/mnt/nas01/share/file.txt"))))
+
+(ert-deftest test-ffap-not-on-path ()
+  "パス上にカーソルがない場合はnilを返す。"
+  (with-temp-buffer
+    (insert "テキスト C:\\Users\\user\\file.txt")
+    (goto-char 3)  ;; パスの前にカーソル
+    (should-not (wsl2-path-bridge--ffap-at-point))))
+
+(ert-deftest test-ffap-quoted-japanese-path ()
+  "日本語を含むクオート付きパス上でffapが動作する。"
+  (with-temp-buffer
+    (insert "\"C:\\Users\\user\\OneDrive\\デスクトップ\\test.txt\"")
+    (goto-char 5)  ;; パス上にカーソル
+    (should (equal (wsl2-path-bridge--ffap-at-point)
+                   "/mnt/c/Users/user/OneDrive/デスクトップ/test.txt"))))
+
+;;; ============================================================
 ;;; モード有効/無効のテスト
 ;;; ============================================================
 
@@ -229,9 +272,11 @@
   (wsl2-path-bridge-mode 1)
   (should (advice-member-p #'wsl2-path-bridge--after-yank 'yank))
   (should (advice-member-p #'wsl2-path-bridge--after-yank 'yank-pop))
+  (should (advice-member-p #'wsl2-path-bridge--ffap-at-point 'ffap-guesser))
   (wsl2-path-bridge-mode -1)
   (should-not (advice-member-p #'wsl2-path-bridge--after-yank 'yank))
-  (should-not (advice-member-p #'wsl2-path-bridge--after-yank 'yank-pop)))
+  (should-not (advice-member-p #'wsl2-path-bridge--after-yank 'yank-pop))
+  (should-not (advice-member-p #'wsl2-path-bridge--ffap-at-point 'ffap-guesser)))
 
 (provide 'wsl2-path-bridge-test)
 ;;; wsl2-path-bridge-test.el ends here
