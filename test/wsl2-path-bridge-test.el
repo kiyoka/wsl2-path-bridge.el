@@ -93,6 +93,58 @@
                    "/wsl/c/Users/user"))))
 
 ;;; ============================================================
+;;; wsl2-path-bridge--unc-path-p のテスト
+;;; ============================================================
+
+(ert-deftest test-unc-path-p-backslash ()
+  "バックスラッシュ形式のUNCパスを認識する。"
+  (should (wsl2-path-bridge--unc-path-p "\\\\server\\share\\folder")))
+
+(ert-deftest test-unc-path-p-not-windows ()
+  "Windowsドライブパスは認識しない。"
+  (should-not (wsl2-path-bridge--unc-path-p "C:\\Users\\user")))
+
+(ert-deftest test-unc-path-p-unix ()
+  "Unixパスは認識しない。"
+  (should-not (wsl2-path-bridge--unc-path-p "/home/user")))
+
+(ert-deftest test-unc-path-p-single-backslash ()
+  "バックスラッシュ1つは認識しない。"
+  (should-not (wsl2-path-bridge--unc-path-p "\\server\\share")))
+
+;;; ============================================================
+;;; UNCパス変換のテスト
+;;; ============================================================
+
+(ert-deftest test-convert-unc-path ()
+  "UNCパスをWSL2パスに変換する。"
+  (should (equal (wsl2-path-bridge--convert-path "\\\\server\\share\\folder\\file.txt")
+                 "/mnt/server/share/folder/file.txt")))
+
+(ert-deftest test-convert-unc-path-simple ()
+  "シンプルなUNCパスを変換する。"
+  (should (equal (wsl2-path-bridge--convert-path "\\\\nas01\\data")
+                 "/mnt/nas01/data")))
+
+(ert-deftest test-convert-unc-path-japanese ()
+  "日本語を含むUNCパスを変換する。"
+  (should (equal (wsl2-path-bridge--convert-path "\\\\server\\共有フォルダ\\資料.docx")
+                 "/mnt/server/共有フォルダ/資料.docx")))
+
+(ert-deftest test-convert-unc-path-custom-mount ()
+  "カスタムマウントポイントでUNCパスを変換する。"
+  (let ((wsl2-path-bridge-mount-point "/wsl/"))
+    (should (equal (wsl2-path-bridge--convert-path "\\\\server\\share")
+                   "/wsl/server/share"))))
+
+(ert-deftest test-convert-unc-path-quoted ()
+  "クオート付きUNCパスの変換。"
+  (let* ((input "\"\\\\server\\share\\file.txt\"")
+         (stripped (wsl2-path-bridge--strip-quotes input))
+         (wsl-path (wsl2-path-bridge--convert-path stripped)))
+    (should (equal wsl-path "/mnt/server/share/file.txt"))))
+
+;;; ============================================================
 ;;; ミニバッファプレフィックス除去のテスト
 ;;; ============================================================
 

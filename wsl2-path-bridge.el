@@ -68,10 +68,17 @@ Windowsの「パスのコピー」操作で付与される引用符に対応。"
   (and (stringp str)
        (string-match-p "\\`[A-Za-z]:[/\\\\]" str)))
 
+(defun wsl2-path-bridge--unc-path-p (str)
+  "STR がUNCパスかどうかを判定する。
+`\\\\server\\share\\...' の形式に対応。"
+  (and (stringp str)
+       (string-match-p "\\`\\\\\\\\[^\\\\]" str)))
+
 (defun wsl2-path-bridge--convert-path (path)
   "WindowsパスPATHをWSL2パスに変換する。
-PATHがWindowsパスでない場合はnilを返す。"
-  (when (wsl2-path-bridge--windows-path-p path)
+PATHがWindowsパスでもUNCパスでもない場合はnilを返す。"
+  (cond
+   ((wsl2-path-bridge--windows-path-p path)
     (let* ((drive-letter (downcase (substring path 0 1)))
            (rest (substring path 2))
            ;; 先頭の区切り文字を除去
@@ -80,7 +87,12 @@ PATHがWindowsパスでない場合はnilを返す。"
                    rest))
            ;; バックスラッシュをスラッシュに変換
            (rest (replace-regexp-in-string "\\\\" "/" rest)))
-      (concat wsl2-path-bridge-mount-point drive-letter "/" rest))))
+      (concat wsl2-path-bridge-mount-point drive-letter "/" rest)))
+   ((wsl2-path-bridge--unc-path-p path)
+    (let* (;; 先頭の \\ を除去してバックスラッシュをスラッシュに変換
+           (rest (substring path 2))
+           (rest (replace-regexp-in-string "\\\\" "/" rest)))
+      (concat wsl2-path-bridge-mount-point rest)))))
 
 (defun wsl2-path-bridge--file-name-minibuffer-p ()
   "現在のミニバッファがファイル名入力用かどうかを判定する。"
@@ -94,9 +106,10 @@ PATHがWindowsパスでない場合はnilを返す。"
     (let* ((content (minibuffer-contents))
            ;; ダブルクオーテーションを除去（Windowsの「パスのコピー」対応）
            (content (wsl2-path-bridge--strip-quotes content))
-           ;; ミニバッファの内容からWindowsパスを検出
+           ;; ミニバッファの内容からWindowsパスまたはUNCパスを検出
            ;; デフォルトディレクトリ（~/等）がプレフィックスとして付く場合がある
-           (win-path-pos (string-match "[A-Za-z]:[/\\\\]" content)))
+           (win-path-pos (or (string-match "\\\\\\\\[^\\\\]" content)
+                             (string-match "[A-Za-z]:[/\\\\]" content))))
       (when win-path-pos
         (let* ((win-path (substring content win-path-pos))
                ;; 末尾のダブルクオーテーションを除去

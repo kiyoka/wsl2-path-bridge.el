@@ -42,6 +42,26 @@ WSL2上のEmacsで、Windowsのファイルパス（`C:\Users\...`）を `find-f
 - ドライブレターは自動的に小文字化
 - 日本語を含むパスもそのまま変換
 - `find-file-other-window` 等のファイル名入力ミニバッファすべてで動作
+- Windowsの「パスのコピー」で付与されるダブルクオーテーションも自動除去
+
+### UNCパス（ファイルサーバー）
+
+UNCパス（`\\server\share\...`）も `/mnt/server/share/...` に変換されます。
+
+| 入力（Windows） | 出力（WSL2） |
+|---|---|
+| `\\server\share\folder\file.txt` | `/mnt/server/share/folder/file.txt` |
+| `\\nas01\data\資料.docx` | `/mnt/nas01/data/資料.docx` |
+
+**注意**: WSL2ではUNCパスに直接アクセスできません。事前に `mount -t drvfs` でマウントする必要があります。
+
+```bash
+# 例: \\fileserver01\SharedFolder をマウントする場合
+sudo mkdir -p /mnt/fileserver01/SharedFolder
+sudo mount -t drvfs '\\fileserver01\SharedFolder' /mnt/fileserver01/SharedFolder
+```
+
+マウント後であれば、変換されたパス `/mnt/fileserver01/SharedFolder/...` でファイルにアクセスできます。
 
 ## カスタマイズ
 
