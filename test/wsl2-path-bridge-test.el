@@ -123,6 +123,52 @@
     (should-not win-path-pos)))
 
 ;;; ============================================================
+;;; wsl2-path-bridge--strip-quotes のテスト
+;;; ============================================================
+
+(ert-deftest test-strip-quotes-quoted-path ()
+  "ダブルクオーテーションで囲まれたパスからクオートを除去する。"
+  (should (equal (wsl2-path-bridge--strip-quotes "\"C:\\Users\\user\\file.txt\"")
+                 "C:\\Users\\user\\file.txt")))
+
+(ert-deftest test-strip-quotes-unquoted-path ()
+  "クオートなしのパスはそのまま返す。"
+  (should (equal (wsl2-path-bridge--strip-quotes "C:\\Users\\user\\file.txt")
+                 "C:\\Users\\user\\file.txt")))
+
+(ert-deftest test-strip-quotes-with-prefix ()
+  "プレフィックス付きでクオートされたパスからクオートとプレフィックスを除去する。"
+  (let* ((content "~/\"C:\\Users\\user\\file.txt\"")
+         (stripped (wsl2-path-bridge--strip-quotes content)))
+    ;; プレフィックスがあるためクオート除去はされない（前後が"でない）
+    (should (equal stripped content))))
+
+(ert-deftest test-strip-quotes-with-prefix-trailing-quote ()
+  "プレフィックス付きの場合、抽出後の末尾クオートが除去される。"
+  ;; ~/\"C:\\...\" から win-path 抽出時に末尾の \" が残るケースをテスト
+  (let* ((content "~/\"C:\\Users\\user\\file.txt\"")
+         (win-path-pos (string-match "[A-Za-z]:[/\\\\]" content))
+         (win-path (substring content win-path-pos))
+         ;; 末尾のダブルクオーテーションを除去
+         (win-path (if (and (> (length win-path) 0)
+                            (eq (aref win-path (1- (length win-path))) ?\"))
+                       (substring win-path 0 -1)
+                     win-path))
+         (wsl-path (wsl2-path-bridge--convert-path win-path)))
+    (should (equal wsl-path "/mnt/c/Users/user/file.txt"))))
+
+(ert-deftest test-strip-quotes-empty ()
+  "空文字列はそのまま返す。"
+  (should (equal (wsl2-path-bridge--strip-quotes "") "")))
+
+(ert-deftest test-strip-quotes-conversion ()
+  "クオート付きWindowsパスの変換が正しく動作する。"
+  (let* ((input "\"C:\\Users\\user\\OneDrive\\デスクトップ\\test.txt\"")
+         (stripped (wsl2-path-bridge--strip-quotes input))
+         (wsl-path (wsl2-path-bridge--convert-path stripped)))
+    (should (equal wsl-path "/mnt/c/Users/user/OneDrive/デスクトップ/test.txt"))))
+
+;;; ============================================================
 ;;; モード有効/無効のテスト
 ;;; ============================================================
 
