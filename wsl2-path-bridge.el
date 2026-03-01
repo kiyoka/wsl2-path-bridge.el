@@ -170,18 +170,38 @@ GROUPはmatch-stringのグループ番号（デフォルト0）。"
                   (format "wslpath -w %s" (shell-quote-argument path))))))
     (if (string-empty-p result) nil result)))
 
+(defun wsl2-path-bridge--copy-to-windows-clipboard (text)
+  "TEXTをWindowsクリップボードにコピーする。clip.exeを使用。
+clip.exeが利用できない場合はnilを返す。"
+  (condition-case nil
+      (let ((clip (or (executable-find "clip.exe")
+                      "/mnt/c/Windows/System32/clip.exe")))
+        (when (file-executable-p clip)
+          (let ((process (start-process "clip" nil clip)))
+            (process-send-string process text)
+            (process-send-eof process)
+            t)))
+    (error nil)))
+
 ;;;###autoload
 (defun wsl2-path-bridge-copy-windows-path ()
-  "現在のバッファのファイルパスをWindowsパスに変換してクリップボードにコピーする。"
+  "現在のバッファのファイルパスをWindowsパスに変換してクリップボードにコピーする。
+kill-ringとWindowsクリップボード（clip.exe）の両方にコピーする。"
   (interactive)
-  (let ((file (buffer-file-name)))
+  (let ((file (or (buffer-file-name)
+                  (and (derived-mode-p 'dired-mode)
+                       (dired-get-filename nil t))
+                  (and (derived-mode-p 'dired-mode)
+                       (expand-file-name default-directory)))))
     (unless file
       (error "このバッファにはファイルが関連付けられていません"))
     (let ((win-path (wsl2-path-bridge-to-windows-path file)))
       (unless win-path
         (error "パスの変換に失敗しました: %s" file))
       (kill-new win-path)
-      (message "Copied: %s" win-path))))
+      (if (wsl2-path-bridge--copy-to-windows-clipboard win-path)
+          (message "Copied: %s" win-path)
+        (message "Copied to kill-ring: %s (clip.exe unavailable)" win-path)))))
 
 ;;;###autoload
 (define-minor-mode wsl2-path-bridge-mode
@@ -197,12 +217,18 @@ WSL2パスに変換して開けるようになります。"
       (progn
         (advice-add 'yank :after #'wsl2-path-bridge--after-yank)
         (advice-add 'yank-pop :after #'wsl2-path-bridge--after-yank)
+        ;; ターミナルペースト対応（emacs -nw でのドラッグ&ドロップ等）
+        (advice-add 'xterm-paste :after #'wsl2-path-bridge--after-yank)
         ;; ffapがオートロード前にアドバイスが失われないよう事前にロード
         (require 'ffap)
-        (advice-add 'ffap-guesser :before-until #'wsl2-path-bridge--ffap-at-point))
+        (advice-add 'ffap-guesser :before-until #'wsl2-path-bridge--ffap-at-point)
+        ;; キーバインド設定
+        (global-set-key (kbd "C-c p") #'wsl2-path-bridge-copy-windows-path))
     (advice-remove 'yank #'wsl2-path-bridge--after-yank)
     (advice-remove 'yank-pop #'wsl2-path-bridge--after-yank)
-    (advice-remove 'ffap-guesser #'wsl2-path-bridge--ffap-at-point)))
+    (advice-remove 'xterm-paste #'wsl2-path-bridge--after-yank)
+    (advice-remove 'ffap-guesser #'wsl2-path-bridge--ffap-at-point)
+    (global-unset-key (kbd "C-c p"))))
 
 (provide 'wsl2-path-bridge)
 ;;; wsl2-path-bridge.el ends here
